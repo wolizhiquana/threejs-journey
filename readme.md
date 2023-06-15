@@ -9,7 +9,7 @@ Run this followed commands:
 # Install dependencies (only the first time)
 pnpm install
 
-# Run the local server at localhost:8080
+# Run the local server at localhost:5173
 pnpm dev
 
 # Build for production in the dist/ directory

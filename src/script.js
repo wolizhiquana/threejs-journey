@@ -1,14 +1,13 @@
+import { GUI } from 'lil-gui'
 import * as THREE from 'three'
-import * as dat from 'dat.gui'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { FontLoader } from 'three/addons/loaders/FontLoader.js'
-import { TextGeometry } from 'three/addons/geometries/TextGeometry.js'
+import { RectAreaLightHelper } from 'three/addons/helpers/RectAreaLightHelper.js'
 
 /**
  * Base
  */
 // Debug
-const gui = new dat.GUI()
+const gui = new GUI()
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -17,59 +16,86 @@ const canvas = document.querySelector('canvas.webgl')
 const scene = new THREE.Scene()
 
 /**
- * Textures
+ * Lights
  */
-const textureLoader = new THREE.TextureLoader()
-const matcapTexture = textureLoader.load('/textures/matcaps/6.png')
+// AmbientLight
+const ambientLight = new THREE.AmbientLight()
+ambientLight.color = new THREE.Color(0xffffff)
+ambientLight.intensity = 0.5
+scene.add(ambientLight)
+
+// DirectionalLight
+const directionalLight = new THREE.DirectionalLight(0x00fffc, 0.3)
+directionalLight.position.set(1, 0.25, 0)
+scene.add(directionalLight)
+
+// HemisphereLight
+const hemisphereLight = new THREE.HemisphereLight(0xff0000, 0x0000ff, 0.3)
+scene.add(hemisphereLight)
+
+// PointLight
+const pointLight = new THREE.PointLight(0xff9000, 0.5, 3)
+pointLight.position.set(1, -0.5, 1)
+scene.add(pointLight)
+
+// RectAreaLight
+const rectAreaLight = new THREE.RectAreaLight(0x4e00ff, 2, 1, 1)
+rectAreaLight.position.set(-1.5, 0, 1.5)
+rectAreaLight.lookAt(new THREE.Vector3())
+scene.add(rectAreaLight)
+
+// SpotLight
+const spotLight = new THREE.SpotLight(0x7bff00, 0.5, 10, Math.PI * 0.1, 0.25, 1)
+spotLight.position.set(0, 2, 3)
+spotLight.target.position.x = -1.75
+scene.add(spotLight)
+
+// Helpers
+const hemisphereLightHelper = new THREE.HemisphereLightHelper(
+  hemisphereLight,
+  0.2
+)
+scene.add(hemisphereLightHelper)
+
+const directionalLightHelper = new THREE.DirectionalLightHelper(
+  directionalLight,
+  0.2
+)
+scene.add(directionalLightHelper)
+
+const pointLightHelper = new THREE.PointLightHelper(pointLight, 0.2)
+scene.add(pointLightHelper)
+
+const spotLightHelper = new THREE.SpotLightHelper(spotLight)
+scene.add(spotLightHelper)
+
+const rectAreaLightHelper = new RectAreaLightHelper(rectAreaLight)
+scene.add(rectAreaLightHelper)
 
 /**
- * Fonts
+ * Objects
  */
-const fontLoader = new FontLoader()
+// Material
+const material = new THREE.MeshStandardMaterial()
+material.roughness = 0.4
 
-fontLoader.load('fonts/helvetiker_regular.typeface.json', (font) => {
-  const textGemotry = new TextGeometry('Hello Three.js!', {
-    font: font,
-    size: 0.5,
-    height: 0.2,
-    curveSegments: 50,
-    bevelEnabled: true,
-    bevelThickness: 0.03,
-    bevelSize: 0.02,
-    bevelOffset: 0,
-    bevelSegments: 50
-  })
+// Objects
+const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), material)
+sphere.position.x = -1.5
 
-  textGemotry.center()
+const cube = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.75), material)
 
-  const material = new THREE.MeshMatcapMaterial()
-  material.matcap = matcapTexture
+const torus = new THREE.Mesh(
+  new THREE.TorusGeometry(0.3, 0.2, 32, 64),
+  material
+)
+torus.position.x = 1.5
 
-  const text = new THREE.Mesh(textGemotry, material)
-  scene.add(text)
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), material)
+plane.rotation.x = -Math.PI * 0.5
+plane.position.y = -0.65
 
-  console.time('donuts')
-
-  const donutGeometry = new THREE.TorusGeometry(0.3, 0.2, 20, 45)
-
-  for (let i = 0; i < 1000; i++) {
-    const donut = new THREE.Mesh(donutGeometry, material)
-
-    donut.position.x = (Math.random() - 0.5) * i + 2
-    donut.position.y = (Math.random() - 0.5) * i + 2
-    donut.position.z = (Math.random() - 0.5) * i + 2
-
-    donut.rotation.x = Math.random() * Math.PI
-    donut.rotation.y = Math.random() * Math.PI
-
-    const scale = Math.random()
-    donut.scale.set(scale, scale, scale)
-
-    scene.add(donut)
-  }
-
-  console.timeEnd('donuts')
-})
+scene.add(sphere, cube, torus, plane)
 
 /**
  * Sizes
@@ -128,6 +154,15 @@ const clock = new THREE.Clock()
 
 const tick = () => {
   const elapsedTime = clock.getElapsedTime()
+
+  // Update objects
+  sphere.rotation.y = 0.1 * elapsedTime
+  cube.rotation.y = 0.1 * elapsedTime
+  torus.rotation.y = 0.1 * elapsedTime
+
+  sphere.rotation.x = 0.15 * elapsedTime
+  cube.rotation.x = 0.15 * elapsedTime
+  torus.rotation.x = 0.15 * elapsedTime
 
   // Update controls
   controls.update()
