@@ -1,13 +1,25 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import * as dat from 'lil-gui'
+import gsap from 'gsap'
+
+/**
+ * Debug
+ */
+const gui = new dat.GUI()
+
+const parameters = {
+  materialColor: '#ffeded'
+}
+
+gui.addColor(parameters, 'materialColor').onChange(() => {
+  material.color.set(parameters.materialColor)
+  particleMaterial.color.set(parameters.materialColor)
+})
 
 /**
  * Base
  */
-// Debug
-const gui = new dat.GUI({ width: 360 })
-
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
 
@@ -15,152 +27,78 @@ const canvas = document.querySelector('canvas.webgl')
 const scene = new THREE.Scene()
 
 /**
- * Galaxy
+ * Objects
  */
-const parameters = {}
-parameters.count = 100000
-parameters.size = 0.01
-parameters.radius = 5
-parameters.branches = 3
-parameters.spin = 1
-parameters.randomness = 1
-parameters.randomnessPower = 3
-parameters.insideColor = '#ff6030'
-parameters.outsideColor = '#1b3984'
+// Textures
+const textureLoader = new THREE.TextureLoader()
+const gradientTexture = textureLoader.load('/textures/gradients/3.jpg')
+gradientTexture.magFilter = THREE.NearestFilter
 
-let geometry = null
-let material = null
-let points = null
+// Material
+const material = new THREE.MeshToonMaterial({
+  color: parameters.materialColor,
+  gradientMap: gradientTexture
+})
 
-const generateGalaxy = () => {
-  if (geometry) {
-    geometry.dispose()
-    material.dispose()
-    scene.remove(points)
-  }
+// Meshes
+const objectsDistance = 4
+const mesh1 = new THREE.Mesh(new THREE.TorusGeometry(1, 0.4, 16, 60), material)
 
-  /**
-   * Geometry
-   */
-  geometry = new THREE.BufferGeometry()
+const mesh2 = new THREE.Mesh(new THREE.ConeGeometry(1, 2, 32), material)
 
-  const positions = new Float32Array(parameters.count * 3)
-  const colors = new Float32Array(parameters.count * 3)
+const mesh3 = new THREE.Mesh(
+  new THREE.TorusKnotGeometry(0.8, 0.35, 100, 16),
+  material
+)
 
-  const colorInside = new THREE.Color(parameters.insideColor)
-  const colorOutside = new THREE.Color(parameters.outsideColor)
+mesh1.position.y = objectsDistance * 0
+mesh2.position.y = -objectsDistance * 1
+mesh3.position.y = -objectsDistance * 2
 
-  for (let i = 0; i < parameters.count; i++) {
-    const i3 = i * 3
+mesh1.position.x = 2
+mesh2.position.x = -2
+mesh3.position.x = 2
 
-    // Position
-    const radius = Math.random() * parameters.radius
-    const spinAngle = radius * parameters.spin
-    const branchAngle =
-      ((2 * Math.PI) / parameters.branches) * (i % parameters.branches)
+scene.add(mesh1, mesh2, mesh3)
 
-    const randomAngle1 = Math.random() * Math.PI * 2
-    const randomAngle2 = Math.random() * Math.PI * 2
-    const randomX =
-      Math.cos(randomAngle1) *
-      Math.sin(randomAngle2) *
-      Math.pow(Math.random(), parameters.randomnessPower)
-    const randomY =
-      Math.cos(randomAngle2) *
-      Math.pow(Math.random(), parameters.randomnessPower)
-    const randomZ =
-      Math.sin(randomAngle1) *
-      Math.sin(randomAngle2) *
-      Math.pow(Math.random(), parameters.randomnessPower)
+const sectionMeshes = [mesh1, mesh2, mesh3]
 
-    positions[i3 + 0] =
-      Math.pow(radius / parameters.radius, parameters.randomnessPower) *
-        radius *
-        Math.cos(branchAngle + spinAngle) +
-      randomX
-    positions[i3 + 1] = randomY
-    positions[i3 + 2] =
-      Math.pow(radius / parameters.radius, parameters.randomnessPower) *
-        radius *
-        Math.sin(branchAngle + spinAngle) +
-      randomZ
+/**
+ * Paticles
+ */
+const particlesCount = 1000
+const particleGeometry = new THREE.BufferGeometry()
 
-    const mixedColor = colorInside.clone()
-    mixedColor.lerp(colorOutside, radius / parameters.radius)
+const positions = new Float32Array(particlesCount * 3)
+for (let i = 0; i < particlesCount; i++) {
+  const i3 = i * 3
 
-    // Color
-    colors[i3 + 0] = mixedColor.r
-    colors[i3 + 1] = mixedColor.g
-    colors[i3 + 2] = mixedColor.b
-  }
-
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-
-  /**
-   * Material
-   */
-  material = new THREE.PointsMaterial({
-    size: parameters.size,
-    sizeAttenuation: true,
-    depthTest: false,
-    blending: THREE.AdditiveBlending,
-    vertexColors: true
-  })
-
-  /**
-   * Points
-   */
-  points = new THREE.Points(geometry, material)
-  scene.add(points)
+  positions[i3 + 0] = (Math.random() - 0.5) * 10
+  positions[i3 + 1] =
+    objectsDistance * 0.4 -
+    Math.random() * objectsDistance * sectionMeshes.length
+  positions[i3 + 2] = (Math.random() - 0.5) * 10
 }
+particleGeometry.setAttribute(
+  'position',
+  new THREE.BufferAttribute(positions, 3)
+)
 
-generateGalaxy()
+const particleMaterial = new THREE.PointsMaterial({
+  color: parameters.materialColor,
+  size: 0.05,
+  sizeAttenuation: true
+})
 
-gui
-  .add(parameters, 'count')
-  .min(100)
-  .max(1000000)
-  .step(100)
-  .onFinishChange(generateGalaxy)
-gui
-  .add(parameters, 'size')
-  .min(0.001)
-  .max(0.1)
-  .step(0.001)
-  .onFinishChange(generateGalaxy)
-gui
-  .add(parameters, 'radius')
-  .min(0.01)
-  .max(20)
-  .step(0.01)
-  .onFinishChange(generateGalaxy)
-gui
-  .add(parameters, 'branches')
-  .min(2)
-  .max(20)
-  .step(1)
-  .onFinishChange(generateGalaxy)
-gui
-  .add(parameters, 'spin')
-  .min(-5)
-  .max(5)
-  .step(0.02)
-  .onFinishChange(generateGalaxy)
-gui
-  .add(parameters, 'randomness')
-  .min(0)
-  .max(2)
-  .step(0.001)
-  .onFinishChange(generateGalaxy)
-gui
-  .add(parameters, 'randomnessPower')
-  .min(1)
-  .max(10)
-  .step(0.01)
-  .onFinishChange(generateGalaxy)
-gui.addColor(parameters, 'insideColor').onFinishChange(generateGalaxy)
-gui.addColor(parameters, 'outsideColor').onFinishChange(generateGalaxy)
+const particles = new THREE.Points(particleGeometry, particleMaterial)
+scene.add(particles)
+
+/**
+ * Lights
+ */
+const directionalLight = new THREE.DirectionalLight('#ffffff', 1)
+directionalLight.position.set(1, 1, 0)
+scene.add(directionalLight)
 
 /**
  * Sizes
@@ -187,41 +125,90 @@ window.addEventListener('resize', () => {
 /**
  * Camera
  */
+// Group
+const cameraGroup = new THREE.Group()
+scene.add(cameraGroup)
+
 // Base camera
 const camera = new THREE.PerspectiveCamera(
-  75,
+  35,
   sizes.width / sizes.height,
   0.1,
   100
 )
-camera.position.x = 3
-camera.position.y = 3
-camera.position.z = 3
-scene.add(camera)
-
-// Controls
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
+camera.position.z = 6
+cameraGroup.add(camera)
 
 /**
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
-  canvas: canvas
+  canvas: canvas,
+  alpha: true
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 /**
+ * Scroll
+ */
+let scrollY = window.scrollY
+let currentSection = 0
+
+window.onscroll = (e) => {
+  scrollY = window.scrollY
+
+  const newSection = Math.round(scrollY / sizes.height)
+
+  if (newSection !== currentSection) {
+    currentSection = newSection
+
+    gsap.to(sectionMeshes[currentSection].rotation, {
+      duration: 1.5,
+      ease: 'power2.inOut',
+      x: '+=6',
+      y: '+=3',
+      z: '+=1.5'
+    })
+  }
+}
+
+/**
+ * Cursor
+ */
+const cursor = {}
+cursor.x = 0
+cursor.y = 0
+
+window.onmousemove = (e) => {
+  cursor.x = e.clientX / sizes.width - 0.5
+  cursor.y = e.clientY / sizes.height - 0.5
+}
+
+/**
  * Animate
  */
 const clock = new THREE.Clock()
+let previousTime = 0
 
 const tick = () => {
   const elapsedTime = clock.getElapsedTime()
+  const deltaTime = elapsedTime - previousTime
+  previousTime = elapsedTime
 
-  // Update controls
-  controls.update()
+  // Animate camera
+  camera.position.y = (-scrollY / sizes.height) * objectsDistance
+
+  const parallaxX = cursor.x * 0.5
+  const parallaxY = -cursor.y * 0.5
+  cameraGroup.position.x += (parallaxX - cameraGroup.position.x) * deltaTime * 5
+  cameraGroup.position.y += (parallaxY - cameraGroup.position.y) * deltaTime * 5
+
+  // Animate meshes
+  sectionMeshes.forEach((mesh) => {
+    mesh.rotation.x += deltaTime * 0.1
+    mesh.rotation.y += deltaTime * 0.12
+  })
 
   // Render
   renderer.render(scene, camera)
