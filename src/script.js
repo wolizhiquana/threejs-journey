@@ -1,9 +1,8 @@
-import * as dat from 'lil-gui'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import fragmentShader from './shaders/water/fragment.glsl'
-import vertexShader from './shaders/water/vertex.glsl'
-import Stats from 'three/examples/jsm/libs/stats.module.js'
+import * as dat from 'lil-gui'
+import galaxyVertexShader from './shaders/galaxy/vertex.glsl'
+import galaxyFragmentShader from './shaders/galaxy/fragment.glsl'
 
 THREE.ColorManagement.enabled = false
 
@@ -11,18 +10,13 @@ THREE.ColorManagement.enabled = false
  * Base
  */
 // Debug
-const gui = new dat.GUI({ width: 340 })
-const debugObject = {}
+const gui = new dat.GUI()
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
-
-// State
-const stats = new Stats()
-document.body.appendChild(stats.dom)
 
 /**
  * Sizes
@@ -56,155 +50,10 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   100
 )
-camera.position.set(1, 1, 1)
+camera.position.x = 3
+camera.position.y = 3
+camera.position.z = 3
 scene.add(camera)
-
-/**
- * Water
- */
-// Geometry
-const waterGeometry = new THREE.PlaneGeometry(20, 20, 1024, 1024)
-
-// Color
-debugObject.depthColor = '#186691'
-debugObject.surfaceColor = '#9bd8ff'
-debugObject.fogColor = '#030f1c'
-
-// Material
-const waterMaterial = new THREE.ShaderMaterial({
-  vertexShader,
-  fragmentShader,
-  uniforms: {
-    uTime: { value: 0 },
-
-    uBigWaveFrequency: { value: new THREE.Vector2(1.5, 1) },
-    uBigWaveElevation: { value: 0.2 },
-    uBigWaveSpeed: { value: 1 },
-
-    uSmallWaveElevation: { value: 0.15 },
-    uSmallWaveFrequency: { value: 3 },
-    uSmallWaveSpeed: { value: 0.5 },
-    uSmallWaveIteration: { value: 4 },
-
-    uDepthColor: { value: new THREE.Color(debugObject.depthColor) },
-    uSurfaceColor: { value: new THREE.Color(debugObject.surfaceColor) },
-    uColorOffset: { value: 0.02 },
-    uColorMultiplier: { value: 4 },
-
-    uCameraPosition: { value: camera.position },
-    uFogColor: { value: new THREE.Color(debugObject.fogColor) },
-    uFogNear: { value: 5 },
-    uFogFar: { value: 12 }
-  }
-})
-
-const bigWaveGui = gui.addFolder('大波浪')
-bigWaveGui
-  .add(waterMaterial.uniforms.uBigWaveElevation, 'value')
-  .min(0)
-  .max(1)
-  .step(0.01)
-  .name('高度')
-bigWaveGui
-  .add(waterMaterial.uniforms.uBigWaveFrequency.value, 'x')
-  .min(0)
-  .max(10)
-  .step(0.01)
-  .name('频率X')
-bigWaveGui
-  .add(waterMaterial.uniforms.uBigWaveFrequency.value, 'y')
-  .min(0)
-  .max(10)
-  .step(0.01)
-  .name('频率Y')
-bigWaveGui
-  .add(waterMaterial.uniforms.uBigWaveSpeed, 'value')
-  .min(0)
-  .max(4)
-  .step(0.01)
-  .name('速度')
-
-const smallWave = gui.addFolder('小波浪')
-smallWave
-  .add(waterMaterial.uniforms.uSmallWaveElevation, 'value')
-  .min(0)
-  .max(1)
-  .step(0.01)
-  .name('高度')
-smallWave
-  .add(waterMaterial.uniforms.uSmallWaveFrequency, 'value')
-  .min(0)
-  .max(30)
-  .step(0.01)
-  .name('频率')
-smallWave
-  .add(waterMaterial.uniforms.uSmallWaveSpeed, 'value')
-  .min(0)
-  .max(4)
-  .step(0.01)
-  .name('速度')
-smallWave
-  .add(waterMaterial.uniforms.uSmallWaveIteration, 'value')
-  .min(1)
-  .max(5)
-  .step(1)
-  .name('迭代次数')
-
-gui
-  .addColor(debugObject, 'surfaceColor')
-  .name('浅层颜色')
-  .onChange(() =>
-    waterMaterial.uniforms.uSurfaceColor.value.set(
-      new THREE.Color(debugObject.surfaceColor)
-    )
-  )
-gui
-  .addColor(debugObject, 'depthColor')
-  .name('深层颜色')
-  .onChange(() =>
-    waterMaterial.uniforms.uDepthColor.value.set(
-      new THREE.Color(debugObject.depthColor)
-    )
-  )
-gui
-  .add(waterMaterial.uniforms.uColorOffset, 'value')
-  .min(0)
-  .max(1)
-  .step(0.01)
-  .name('混色偏移')
-gui
-  .add(waterMaterial.uniforms.uColorMultiplier, 'value')
-  .min(0)
-  .max(10)
-  .step(0.01)
-  .name('混色倍增')
-
-const fogGui = gui.addFolder('雾气')
-fogGui
-  .addColor(debugObject, 'fogColor')
-  .name('颜色')
-  .onChange(() => {
-    waterMaterial.uniforms.uFogColor.value.set(
-      new THREE.Color(debugObject.fogColor)
-    )
-  })
-fogGui
-  .add(waterMaterial.uniforms.uFogNear, 'value')
-  .min(0)
-  .max(100)
-  .step(0.01)
-  .name('最小距离')
-fogGui
-  .add(waterMaterial.uniforms.uFogFar, 'value')
-  .min(0)
-  .max(100)
-  .step(0.01)
-  .name('最大距离')
-
-// Mesh
-const water = new THREE.Mesh(waterGeometry, waterMaterial)
-water.rotation.x = -Math.PI * 0.5
-scene.add(water)
 
 // Controls
 const controls = new OrbitControls(camera, canvas)
@@ -216,8 +65,154 @@ controls.enableDamping = true
 const renderer = new THREE.WebGLRenderer({
   canvas: canvas
 })
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+/**
+ * Galaxy
+ */
+const parameters = {}
+parameters.count = 200000
+parameters.size = 0.005
+parameters.radius = 5
+parameters.branches = 3
+parameters.spin = 1
+parameters.randomness = 0.5
+parameters.randomnessPower = 3
+parameters.insideColor = '#ff6030'
+parameters.outsideColor = '#1b3984'
+
+let geometry = null
+let material = null
+let points = null
+
+const generateGalaxy = () => {
+  if (points !== null) {
+    geometry.dispose()
+    material.dispose()
+    scene.remove(points)
+  }
+
+  /**
+   * Geometry
+   */
+  geometry = new THREE.BufferGeometry()
+
+  const positions = new Float32Array(parameters.count * 3)
+  const colors = new Float32Array(parameters.count * 3)
+  const scales = new Float32Array(parameters.count * 1)
+  const randommess = new Float32Array(parameters.count * 1 * 3)
+
+  const insideColor = new THREE.Color(parameters.insideColor)
+  const outsideColor = new THREE.Color(parameters.outsideColor)
+
+  for (let i = 0; i < parameters.count; i++) {
+    const i3 = i * 3
+
+    // Position
+    const radius = Math.random() * parameters.radius
+
+    const branchAngle =
+      ((i % parameters.branches) / parameters.branches) * Math.PI * 2
+
+    const randomX =
+      Math.pow(Math.random(), parameters.randomnessPower) *
+      (Math.random() < 0.5 ? 1 : -1) *
+      parameters.randomness *
+      radius
+    const randomY =
+      Math.pow(Math.random(), parameters.randomnessPower) *
+      (Math.random() < 0.5 ? 1 : -1) *
+      parameters.randomness *
+      radius
+    const randomZ =
+      Math.pow(Math.random(), parameters.randomnessPower) *
+      (Math.random() < 0.5 ? 1 : -1) *
+      parameters.randomness *
+      radius
+
+    randommess[i3] = randomX
+    randommess[i3 + 1] = randomY
+    randommess[i3 + 2] = randomZ
+
+    positions[i3] = Math.cos(branchAngle) * radius
+    positions[i3 + 1] = 0.0
+    positions[i3 + 2] = Math.sin(branchAngle) * radius
+
+    // Color
+    const mixedColor = insideColor.clone()
+    mixedColor.lerp(outsideColor, radius / parameters.radius)
+
+    colors[i3] = mixedColor.r
+    colors[i3 + 1] = mixedColor.g
+    colors[i3 + 2] = mixedColor.b
+
+    // Scale
+    scales[i] = Math.random()
+  }
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  geometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1))
+  geometry.setAttribute('aRandommess', new THREE.BufferAttribute(randommess, 3))
+
+  /**
+   * Material
+   */
+  material = new THREE.ShaderMaterial({
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexColors: true,
+    vertexShader: galaxyVertexShader,
+    fragmentShader: galaxyFragmentShader,
+    uniforms: {
+      uSize: { value: 30 * renderer.getPixelRatio() },
+      uTime: { value: 0 }
+    }
+  })
+
+  /**
+   * Points
+   */
+  points = new THREE.Points(geometry, material)
+  scene.add(points)
+}
+
+generateGalaxy()
+
+gui
+  .add(parameters, 'count')
+  .min(100)
+  .max(1000000)
+  .step(100)
+  .onFinishChange(generateGalaxy)
+gui
+  .add(parameters, 'radius')
+  .min(0.01)
+  .max(20)
+  .step(0.01)
+  .onFinishChange(generateGalaxy)
+gui
+  .add(parameters, 'branches')
+  .min(2)
+  .max(20)
+  .step(1)
+  .onFinishChange(generateGalaxy)
+gui
+  .add(parameters, 'randomness')
+  .min(0)
+  .max(2)
+  .step(0.001)
+  .onFinishChange(generateGalaxy)
+gui
+  .add(parameters, 'randomnessPower')
+  .min(1)
+  .max(10)
+  .step(0.001)
+  .onFinishChange(generateGalaxy)
+gui.addColor(parameters, 'insideColor').onFinishChange(generateGalaxy)
+gui.addColor(parameters, 'outsideColor').onFinishChange(generateGalaxy)
 
 /**
  * Animate
@@ -228,11 +223,13 @@ const tick = () => {
   const elapsedTime = clock.getElapsedTime()
 
   // Update material
-  waterMaterial.uniforms.uTime.value = elapsedTime
+  material.uniforms.uTime.value = elapsedTime
+
+  // Update controls
+  controls.update()
 
   // Render
   renderer.render(scene, camera)
-  stats.update()
 
   // Call tick again on the next frame
   window.requestAnimationFrame(tick)
