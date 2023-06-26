@@ -1,10 +1,17 @@
+import * as dat from 'lil-gui'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import * as dat from 'lil-gui'
-import beginChunk from './shaders/model/begin.glsl'
-import beginnormalChunk from './shaders/model/beginnormal.glsl'
-import commonChunk from './shaders/model/common.glsl'
+import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js'
+import { DotScreenPass } from 'three/examples/jsm/postprocessing/DotScreenPass.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js'
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader'
+import { RGBShiftShader } from 'three/examples/jsm/shaders/RGBShiftShader.js'
 
 /**
  * Base
@@ -21,9 +28,9 @@ const scene = new THREE.Scene()
 /**
  * Loaders
  */
-const textureLoader = new THREE.TextureLoader()
 const gltfLoader = new GLTFLoader()
 const cubeTextureLoader = new THREE.CubeTextureLoader()
+const textureLoader = new THREE.TextureLoader()
 
 /**
  * Update all materials
@@ -34,7 +41,7 @@ const updateAllMaterials = () => {
       child instanceof THREE.Mesh &&
       child.material instanceof THREE.MeshStandardMaterial
     ) {
-      child.material.envMapIntensity = 1
+      child.material.envMapIntensity = 2.5
       child.material.needsUpdate = true
       child.castShadow = true
       child.receiveShadow = true
@@ -58,106 +65,13 @@ scene.background = environmentMap
 scene.environment = environmentMap
 
 /**
- * Material
- */
-
-// Textures
-const mapTexture = textureLoader.load('/models/LeePerrySmith/color.jpg')
-mapTexture.colorSpace = THREE.SRGBColorSpace
-const normalTexture = textureLoader.load('/models/LeePerrySmith/normal.jpg')
-
-// Material
-const material = new THREE.MeshStandardMaterial({
-  map: mapTexture,
-  normalMap: normalTexture
-})
-
-const depthMaterial = new THREE.MeshDepthMaterial({
-  depthPacking: THREE.RGBADepthPacking
-})
-
-const customUniforms = {
-  uTime: { value: 0 },
-  uRotateStrength: { value: 0.4 }
-}
-
-gui
-  .add(customUniforms.uRotateStrength, 'value')
-  .min(0)
-  .max(3)
-  .step(0.01)
-  .name('扭转力度')
-
-material.onBeforeCompile = (shader) => {
-  shader.uniforms.uTime = customUniforms.uTime
-  shader.uniforms.uRotateStrength = customUniforms.uRotateStrength
-  shader.vertexShader = shader.vertexShader.replace(
-    '#include <common>',
-    commonChunk
-  )
-  shader.vertexShader = shader.vertexShader.replace(
-    '#include <beginnormal_vertex>',
-    beginnormalChunk
-  )
-  shader.vertexShader = shader.vertexShader.replace(
-    '#include <begin_vertex>',
-    beginChunk
-  )
-}
-
-depthMaterial.onBeforeCompile = (shader) => {
-  shader.uniforms.uTime = customUniforms.uTime
-  shader.uniforms.uRotateStrength = customUniforms.uRotateStrength
-  shader.vertexShader = shader.vertexShader.replace(
-    '#include <common>',
-    `
-      #include <common>
-
-      uniform float uTime;
-      uniform float uRotateStrength;
-
-      mat2 get2dRotateMatrix(float angle) {
-        return mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
-      }
-    `
-  )
-  shader.vertexShader = shader.vertexShader.replace(
-    '#include <begin_vertex>',
-    `
-      #include <begin_vertex>
-
-      float angle = sin(position.y + uTime) * uRotateStrength;
-      mat2 rotateMatrix = get2dRotateMatrix(angle);
-      
-      transformed.xz = rotateMatrix * transformed.xz;
-    `
-  )
-}
-
-/**
- * Plane
- */
-const plane = new THREE.Mesh(
-  new THREE.PlaneGeometry(15, 15),
-  new THREE.MeshStandardMaterial()
-)
-plane.rotation.y = Math.PI
-plane.position.y = -5
-plane.position.z = 5
-scene.add(plane)
-
-/**
  * Models
  */
-gltfLoader.load('/models/LeePerrySmith/LeePerrySmith.glb', (gltf) => {
-  // Model
-  const mesh = gltf.scene.children[0]
-  mesh.rotation.y = Math.PI * 0.5
-  mesh.material = material
-  mesh.customDepthMaterial = depthMaterial
-  scene.add(mesh)
+gltfLoader.load('/models/DamagedHelmet/glTF/DamagedHelmet.gltf', (gltf) => {
+  gltf.scene.scale.set(2, 2, 2)
+  gltf.scene.rotation.y = Math.PI * 0.5
+  scene.add(gltf.scene)
 
-  // Update materials
   updateAllMaterials()
 })
 
@@ -169,7 +83,7 @@ directionalLight.castShadow = true
 directionalLight.shadow.mapSize.set(1024, 1024)
 directionalLight.shadow.camera.far = 15
 directionalLight.shadow.normalBias = 0.05
-directionalLight.position.set(0.25, 2, -2.25)
+directionalLight.position.set(0.25, 3, -2.25)
 scene.add(directionalLight)
 
 /**
@@ -192,6 +106,10 @@ window.addEventListener('resize', () => {
   // Update renderer
   renderer.setSize(sizes.width, sizes.height)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+  // Update effect composer
+  effectComposer.setSize(sizes.width, sizes.height)
+  effectComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 })
 
 /**
@@ -220,11 +138,163 @@ const renderer = new THREE.WebGLRenderer({
 })
 renderer.shadowMap.enabled = true
 renderer.shadowMap.type = THREE.PCFShadowMap
-renderer.useLegacyLights = false
-renderer.toneMapping = THREE.ACESFilmicToneMapping
-renderer.toneMappingExposure = 1
+renderer.toneMapping = THREE.ReinhardToneMapping
+renderer.toneMappingExposure = 1.5
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+/**
+ * Post processing
+ */
+// Render target
+const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
+  samples: renderer.getPixelRatio() === 1 ? 2 : 0
+})
+
+const effectComposer = new EffectComposer(renderer, renderTarget)
+effectComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+effectComposer.setSize(sizes.width, sizes.height)
+
+// Render pass
+const renderPass = new RenderPass(scene, camera)
+effectComposer.addPass(renderPass)
+
+// Dot screen pass
+const dotScreenPass = new DotScreenPass()
+dotScreenPass.enabled = false
+effectComposer.addPass(dotScreenPass)
+
+// Glith pass
+const glitchPass = new GlitchPass()
+glitchPass.goWild = false
+glitchPass.enabled = false
+effectComposer.addPass(glitchPass)
+
+// RGB Shift pass
+const rgbShiftPass = new ShaderPass(RGBShiftShader)
+rgbShiftPass.enabled = false
+effectComposer.addPass(rgbShiftPass)
+
+// Unreal bloom pass
+const unrealBloomPass = new UnrealBloomPass()
+unrealBloomPass.enabled = false
+unrealBloomPass.strength = 0.3
+unrealBloomPass.radius = 1
+unrealBloomPass.threshold = 0.6
+effectComposer.addPass(unrealBloomPass)
+
+gui.add(unrealBloomPass, 'enabled')
+gui.add(unrealBloomPass, 'strength').min(0).max(2).step(0.001)
+gui.add(unrealBloomPass, 'radius').min(0).max(2).step(0.001)
+gui.add(unrealBloomPass, 'threshold').min(0).max(1).step(0.001)
+
+// Tint pass
+const TintShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uTint: { value: null }
+  },
+  vertexShader: `
+    varying vec2 vUv;
+
+    void main() {
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      vUv = uv;
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform vec3 uTint;
+
+    varying vec2 vUv;
+
+    void main() {
+      vec4 color = texture2D(tDiffuse, vUv);
+      color.rgb += uTint;
+      gl_FragColor = color;
+    }
+  `
+}
+const tintPass = new ShaderPass(TintShader)
+tintPass.material.uniforms.uTint.value = new THREE.Vector3()
+effectComposer.addPass(tintPass)
+
+gui
+  .add(tintPass.material.uniforms.uTint.value, 'x')
+  .min(-1)
+  .max(1)
+  .step(0.01)
+  .name('red')
+gui
+  .add(tintPass.material.uniforms.uTint.value, 'y')
+  .min(-1)
+  .max(1)
+  .step(0.01)
+  .name('green')
+gui
+  .add(tintPass.material.uniforms.uTint.value, 'z')
+  .min(-1)
+  .max(1)
+  .step(0.01)
+  .name('blue')
+
+// Displacement pass
+const DisplacementShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uNormalMap: { value: null }
+  },
+  vertexShader: `
+    varying vec2 vUv;
+
+    void main() {
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      vUv = uv;
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform sampler2D uNormalMap;
+
+    varying vec2 vUv;
+
+    void main() {
+      vec3 normalColor = texture2D(uNormalMap, vUv).xyz * 2.0 - 1.0;
+
+      vec2 newUv = vUv + normalColor.xy * 0.1;
+      vec4 color = texture2D(tDiffuse, newUv);
+
+      vec3 lightDirection = normalize(vec3(-1.0, 1.0, 0.0));
+      float lightness = clamp(dot(normalColor, lightDirection), 0.0, 1.0);
+      color.rgb += lightness * 2.0;
+
+      gl_FragColor = color;
+    }
+  `
+}
+const displacementPass = new ShaderPass(DisplacementShader)
+displacementPass.enabled = false
+displacementPass.material.uniforms.uNormalMap.value = textureLoader.load(
+  'textures/interfaceNormalMap.png'
+)
+effectComposer.addPass(displacementPass)
+
+// After image pass
+const afterImagePass = new AfterimagePass()
+afterImagePass.enabled = false
+effectComposer.addPass(afterImagePass)
+
+// Gamma Correction pass
+const gammaCorrectionPass = new ShaderPass(GammaCorrectionShader)
+effectComposer.addPass(gammaCorrectionPass)
+
+// SMAA pass
+if (renderer.getPixelRatio() === 1 && !renderer.capabilities.isWebGL2) {
+  const smaaPass = new SMAAPass()
+  effectComposer.addPass(smaaPass)
+
+  console.log('Using SMAA')
+}
 
 /**
  * Animate
@@ -234,14 +304,12 @@ const clock = new THREE.Clock()
 const tick = () => {
   const elapsedTime = clock.getElapsedTime()
 
-  // Update material
-  customUniforms.uTime.value = elapsedTime
-
   // Update controls
   controls.update()
 
   // Render
-  renderer.render(scene, camera)
+  // renderer.render(scene, camera)
+  effectComposer.render()
 
   // Call tick again on the next frame
   window.requestAnimationFrame(tick)
