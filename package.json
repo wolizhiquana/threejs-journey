@@ -13,12 +13,13 @@
     "@react-three/drei": "^9.77.10",
     "@react-three/fiber": "^8.13.4",
     "@react-three/postprocessing": "^2.14.12",
+    "@react-three/rapier": "^1.1.1",
     "leva": "^0.9.35",
     "postprocessing": "^6.32.2",
     "r3f-perf": "^7.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "three": "^0.150.1",
+    "three": "^0.154.0",
     "three-stdlib": "^2.23.10"
   },
   "devDependencies": {
